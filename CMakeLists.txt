@@ -13,3 +13,4 @@ file(GLOB_RECURSE SRCS src/*.cpp)
 add_executable(${PROJECT_NAME} ${SRCS})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE glfw glad_gl_core_46)
+target_compile_definitions(${PROJECT_NAME} PRIVATE RESOURCE_DIR="${CMAKE_SOURCE_DIR}/resources")
