@@ -18,6 +18,12 @@ void main()
             VertexPos.x * s + VertexPos.y * c
     );
 
-    gl_Position = vec4(rotated.x * scr_aspect, rotated.y, VertexPos.z, 1.0);
+    gl_Position = vec4(
+            rotated.x * scr_aspect,
+            rotated.y,
+            VertexPos.z,
+            1.0
+    );
+
     Color = VertexColor;
 }

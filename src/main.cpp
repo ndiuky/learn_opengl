@@ -1,5 +1,6 @@
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
+
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -17,23 +18,25 @@ constexpr int OPENGL_MINOR = 6;
 constexpr auto PROJECT_NAME = "OpenGL Learn";
 
 constexpr float vertices[] = {
-    // positions          // colors
-   -0.5f,  0.5f, 0.0f,    1.0f, 1.0f, 0.0f,
-   -0.5f, -0.5f, 0.0f,    0.0f, 1.0f, 0.0f,
-    0.5f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f,
-
-   -0.5f,  0.5f, 0.0f,    1.0f, 1.0f, 0.0f,
-    0.5f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f,
-    0.5f,  0.5f, 0.0f,    1.0f, 0.0f, 0.0f,
+    // positions           // colors
+    -0.5f,  0.5f, 0.0f,    1.0f, 1.0f, 0.0f,
+    -0.5f, -0.5f, 0.0f,    0.0f, 1.0f, 0.0f,
+     0.5f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f,
+     0.5f,  0.5f, 0.0f,    1.0f, 0.0f, 0.0f,
 };
 
-std::string readResourceFile(const std::filesystem::path &relativePath) {
-    const auto fullPath = RESOURCE_DIR / relativePath;
+constexpr unsigned int indices[] = {
+    0, 1, 2,
+    0, 2, 3
+};
+
+std::string readResourceFile(const std::filesystem::path& relativePath) {
+    const auto fullPath = std::filesystem::path(RESOURCE_DIR) / relativePath;
 
     std::ifstream file(fullPath);
     if (!file.is_open()) {
         throw std::runtime_error(
-            std::string("Failed to open resource file: ") + fullPath.string()
+            "Failed to open resource file: " + fullPath.string()
         );
     }
 
@@ -43,7 +46,7 @@ std::string readResourceFile(const std::filesystem::path &relativePath) {
     return buffer.str();
 }
 
-GLFWwindow *createWindow() {
+GLFWwindow* createWindow() {
     if (!glfwInit()) {
         throw std::runtime_error("Failed to initialize GLFW");
     }
@@ -52,7 +55,7 @@ GLFWwindow *createWindow() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, OPENGL_MINOR);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow *window = glfwCreateWindow(
+    GLFWwindow* window = glfwCreateWindow(
         WIDTH,
         HEIGHT,
         PROJECT_NAME,
@@ -84,10 +87,10 @@ GLFWwindow *createWindow() {
     return window;
 }
 
-GLuint compileShader(GLenum type, const std::string &source) {
+GLuint compileShader(GLenum type, const std::string& source) {
     const GLuint shader = glCreateShader(type);
 
-    const char *sourcePtr = source.c_str();
+    const char* sourcePtr = source.c_str();
     glShaderSource(shader, 1, &sourcePtr, nullptr);
     glCompileShader(shader);
 
@@ -95,7 +98,7 @@ GLuint compileShader(GLenum type, const std::string &source) {
     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
 
     if (!success) {
-        char infoLog[512];
+        char infoLog[512]{};
         glGetShaderInfoLog(shader, sizeof(infoLog), nullptr, infoLog);
 
         glDeleteShader(shader);
@@ -109,8 +112,8 @@ GLuint compileShader(GLenum type, const std::string &source) {
 }
 
 GLuint createShaderProgram(
-    const std::filesystem::path &vertexPath,
-    const std::filesystem::path &fragmentPath
+    const std::filesystem::path& vertexPath,
+    const std::filesystem::path& fragmentPath
 ) {
     const std::string vertexCode = readResourceFile(vertexPath);
     const std::string fragmentCode = readResourceFile(fragmentPath);
@@ -131,13 +134,13 @@ GLuint createShaderProgram(
     glDeleteShader(fragmentShader);
 
     if (!success) {
-        char infoLog[512];
+        char infoLog[512]{};
         glGetProgramInfoLog(program, sizeof(infoLog), nullptr, infoLog);
 
         glDeleteProgram(program);
 
         throw std::runtime_error(
-            std::string("Shader program linking failed:\n{}") + infoLog
+            std::string("Shader program linking failed:\n") + infoLog
         );
     }
 
@@ -147,14 +150,29 @@ GLuint createShaderProgram(
 GLuint createVAO() {
     GLuint vao = 0;
     GLuint vbo = 0;
+    GLuint ebo = 0;
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
 
     glBindVertexArray(vao);
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBufferData(
+        GL_ARRAY_BUFFER,
+        sizeof(vertices),
+        vertices,
+        GL_STATIC_DRAW
+    );
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(
+        GL_ELEMENT_ARRAY_BUFFER,
+        sizeof(indices),
+        indices,
+        GL_STATIC_DRAW
+    );
 
     constexpr GLsizei stride = 6 * sizeof(float);
 
@@ -174,7 +192,7 @@ GLuint createVAO() {
         GL_FLOAT,
         GL_FALSE,
         stride,
-        reinterpret_cast<void *>(3 * sizeof(float))
+        reinterpret_cast<void*>(3 * sizeof(float))
     );
     glEnableVertexAttribArray(1);
 
@@ -185,7 +203,7 @@ GLuint createVAO() {
 
 int main() {
     try {
-        GLFWwindow *window = createWindow();
+        GLFWwindow* window = createWindow();
 
         glViewport(0, 0, WIDTH, HEIGHT);
 
@@ -196,20 +214,36 @@ int main() {
             std::filesystem::path("shaders") / "shader.frag"
         );
 
+        glUseProgram(shaderProgram);
+
+        const GLint aspectLocation =
+            glGetUniformLocation(shaderProgram, "scr_aspect");
+
+        const GLint angleLocation =
+            glGetUniformLocation(shaderProgram, "angle");
+
         while (!glfwWindowShouldClose(window)) {
             glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT);
 
             glUseProgram(shaderProgram);
+
+            if (aspectLocation != -1) {
+                glUniform1f(
+                    aspectLocation,
+                    static_cast<float>(HEIGHT) / static_cast<float>(WIDTH)
+                );
+            }
+
+            if (angleLocation != -1) {
+                glUniform1f(
+                    angleLocation,
+                    static_cast<float>(glfwGetTime())
+                );
+            }
+
             glBindVertexArray(vao);
-
-            const int uni_loc = glGetUniformLocation(shaderProgram, "scr_aspect");
-            glUniform1f(uni_loc, (static_cast<float>(HEIGHT) / static_cast<float>(WIDTH)));
-
-            const int uni_angle_loc = glGetUniformLocation(shaderProgram, "angle");
-            glUniform1f(uni_angle_loc, static_cast<float>(glfwGetTime()));
-
-            glDrawArrays(GL_TRIANGLES, 0, 6);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 
             glfwSwapBuffers(window);
             glfwPollEvents();
@@ -222,7 +256,7 @@ int main() {
         glfwTerminate();
 
         return 0;
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';
         glfwTerminate();
         return -1;
