@@ -8,6 +8,8 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 constexpr int WIDTH = 800;
 constexpr int HEIGHT = 600;
@@ -18,11 +20,11 @@ constexpr int OPENGL_MINOR = 6;
 constexpr auto PROJECT_NAME = "OpenGL Learn";
 
 constexpr float vertices[] = {
-    // positions           // colors
-    -0.5f,  0.5f, 0.0f,    1.0f, 1.0f, 0.0f,
-    -0.5f, -0.5f, 0.0f,    0.0f, 1.0f, 0.0f,
-     0.5f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f,
-     0.5f,  0.5f, 0.0f,    1.0f, 0.0f, 0.0f,
+    // positions           // colors         // texture
+    -0.5f, 0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+    -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
+    0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,
+    0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
 };
 
 constexpr unsigned int indices[] = {
@@ -30,7 +32,7 @@ constexpr unsigned int indices[] = {
     0, 2, 3
 };
 
-std::string readResourceFile(const std::filesystem::path& relativePath) {
+std::string readResourceFile(const std::filesystem::path &relativePath) {
     const auto fullPath = std::filesystem::path(RESOURCE_DIR) / relativePath;
 
     std::ifstream file(fullPath);
@@ -46,7 +48,7 @@ std::string readResourceFile(const std::filesystem::path& relativePath) {
     return buffer.str();
 }
 
-GLFWwindow* createWindow() {
+GLFWwindow *createWindow() {
     if (!glfwInit()) {
         throw std::runtime_error("Failed to initialize GLFW");
     }
@@ -55,7 +57,7 @@ GLFWwindow* createWindow() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, OPENGL_MINOR);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(
+    GLFWwindow *window = glfwCreateWindow(
         WIDTH,
         HEIGHT,
         PROJECT_NAME,
@@ -87,10 +89,10 @@ GLFWwindow* createWindow() {
     return window;
 }
 
-GLuint compileShader(GLenum type, const std::string& source) {
+GLuint compileShader(GLenum type, const std::string &source) {
     const GLuint shader = glCreateShader(type);
 
-    const char* sourcePtr = source.c_str();
+    const char *sourcePtr = source.c_str();
     glShaderSource(shader, 1, &sourcePtr, nullptr);
     glCompileShader(shader);
 
@@ -112,8 +114,8 @@ GLuint compileShader(GLenum type, const std::string& source) {
 }
 
 GLuint createShaderProgram(
-    const std::filesystem::path& vertexPath,
-    const std::filesystem::path& fragmentPath
+    const std::filesystem::path &vertexPath,
+    const std::filesystem::path &fragmentPath
 ) {
     const std::string vertexCode = readResourceFile(vertexPath);
     const std::string fragmentCode = readResourceFile(fragmentPath);
@@ -174,7 +176,7 @@ GLuint createVAO() {
         GL_STATIC_DRAW
     );
 
-    constexpr GLsizei stride = 6 * sizeof(float);
+    constexpr GLsizei stride = 8 * sizeof(float);
 
     glVertexAttribPointer(
         0,
@@ -192,9 +194,19 @@ GLuint createVAO() {
         GL_FLOAT,
         GL_FALSE,
         stride,
-        reinterpret_cast<void*>(3 * sizeof(float))
+        reinterpret_cast<void *>(3 * sizeof(float))
     );
     glEnableVertexAttribArray(1);
+
+    glVertexAttribPointer(
+        2,
+        2,
+        GL_FLOAT,
+        GL_FALSE,
+        stride,
+        reinterpret_cast<void *>(6 * sizeof(float))
+    );
+    glEnableVertexAttribArray(2);
 
     glBindVertexArray(0);
 
@@ -203,7 +215,7 @@ GLuint createVAO() {
 
 int main() {
     try {
-        GLFWwindow* window = createWindow();
+        GLFWwindow *window = createWindow();
 
         glViewport(0, 0, WIDTH, HEIGHT);
 
@@ -214,13 +226,68 @@ int main() {
             std::filesystem::path("shaders") / "shader.frag"
         );
 
-        glUseProgram(shaderProgram);
+        stbi_set_flip_vertically_on_load(true);
+
+        int width, height, channels;
+        unsigned char *pixels = stbi_load(
+            RESOURCE_DIR "/textures/brick.png",
+            &width,
+            &height,
+            &channels,
+            0
+        );
+
+        if (!pixels) {
+            throw std::runtime_error("Failed to load texture");
+        }
+
+        GLenum format;
+        switch (channels) {
+            case 1:
+                format = GL_RED;
+                break;
+            case 3:
+                format = GL_RGB;
+                break;
+            case 4:
+                format = GL_RGBA;
+                break;
+            default:
+                stbi_image_free(pixels);
+                throw std::runtime_error("Unsupported image format");
+        }
+
+        GLuint texture;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            format,
+            width,
+            height,
+            0,
+            format,
+            GL_UNSIGNED_BYTE,
+            pixels
+        );
+
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        stbi_image_free(pixels);
 
         const GLint aspectLocation =
-            glGetUniformLocation(shaderProgram, "scr_aspect");
+                glGetUniformLocation(shaderProgram, "scr_aspect");
 
         const GLint angleLocation =
-            glGetUniformLocation(shaderProgram, "angle");
+                glGetUniformLocation(shaderProgram, "angle");
 
         while (!glfwWindowShouldClose(window)) {
             glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -256,7 +323,7 @@ int main() {
         glfwTerminate();
 
         return 0;
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';
         glfwTerminate();
         return -1;
