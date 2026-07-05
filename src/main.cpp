@@ -18,9 +18,13 @@ constexpr auto PROJECT_NAME = "OpenGL Learn";
 
 constexpr float vertices[] = {
     // positions          // colors
-    0.5f, -0.5f, 0.0f,   1.0f, 0.0f, 0.0f,
-   -0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,
-    0.0f,  0.5f, 0.0f,   0.0f, 0.0f, 1.0f
+   -0.5f,  0.5f, 0.0f,    1.0f, 1.0f, 0.0f,
+   -0.5f, -0.5f, 0.0f,    0.0f, 1.0f, 0.0f,
+    0.5f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f,
+
+   -0.5f,  0.5f, 0.0f,    1.0f, 1.0f, 0.0f,
+    0.5f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f,
+    0.5f,  0.5f, 0.0f,    1.0f, 0.0f, 0.0f,
 };
 
 std::string readResourceFile(const std::filesystem::path &relativePath) {
@@ -198,7 +202,14 @@ int main() {
 
             glUseProgram(shaderProgram);
             glBindVertexArray(vao);
-            glDrawArrays(GL_TRIANGLES, 0, 3);
+
+            const int uni_loc = glGetUniformLocation(shaderProgram, "scr_aspect");
+            glUniform1f(uni_loc, (static_cast<float>(HEIGHT) / static_cast<float>(WIDTH)));
+
+            const int uni_angle_loc = glGetUniformLocation(shaderProgram, "angle");
+            glUniform1f(uni_angle_loc, static_cast<float>(glfwGetTime()));
+
+            glDrawArrays(GL_TRIANGLES, 0, 6);
 
             glfwSwapBuffers(window);
             glfwPollEvents();
